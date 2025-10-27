@@ -32,7 +32,7 @@ jobs:
         run: |
           python - << 'PY'
           import importlib.util, sys, pathlib
-          p = pathlib.Path("resume_dashboard/app.py").resolve()
+          p = pathlib.Path("app.py").resolve()
           spec = importlib.util.spec_from_file_location("app", p)
           mod = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(mod)
