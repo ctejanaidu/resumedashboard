@@ -1,5 +1,3 @@
-# app.py — dark-only resume dashboard with orange accent and improved styling
-
 import json
 from pathlib import Path
 from datetime import datetime
@@ -9,14 +7,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-
-# -------------------- Data loader (safe + cached) --------------------
+# -------------------- Data loader --------------------
 @st.cache_data
 def load_resume() -> dict:
-    """
-    Load resume_data.json next to app.py. If missing/invalid, return a safe
-    structure so CI imports and the app still render.
-    """
     p = Path(__file__).parent / "resume_data.json"
     try:
         if p.exists():
@@ -26,20 +19,8 @@ def load_resume() -> dict:
                     return data
     except Exception:
         pass
-
-    # Fallback so CI or fresh clones don't crash
     return {
-        "profile": {
-            "name": "Your Name",
-            "title": "Data Scientist / Data Engineer",
-            "location": "City, ST",
-            "email": "",
-            "linkedin": "",
-            "portfolio": "",
-            "publication": "",
-            "phone": "",
-            "summary": "Sample summary (fallback used because resume_data.json not found).",
-        },
+        "profile": {},
         "kpis": [],
         "skills": {},
         "experience": [],
@@ -48,10 +29,8 @@ def load_resume() -> dict:
         "certifications": [],
     }
 
-
-# -------------------- Main UI (wrapped so imports are safe) --------------------
+# -------------------- Main --------------------
 def main() -> None:
-    # ---- Page Config (first Streamlit call) ----
     st.set_page_config(
         page_title="Teja Naidu Chintha — Resume Dashboard",
         page_icon="📊",
@@ -60,127 +39,76 @@ def main() -> None:
 
     data = load_resume()
 
-    # ---- Colors / Theme (dark only) ----
-    # global accent (orange-500)
-    ACCENT = "#f97316"
-    PRIMARY = ACCENT
-    SECONDARY = "#f59e0b"  # a lighter orange for subtle effects
-    BG = "#0b1220"
-    FG = "#e5e7eb"
+    # ---- Force Dark Mode ----
+    ORANGE = "#f97316"
+    bg = "#0b1220"
+    fg = "#e5e7eb"
 
-    # Role color map for timeline & expander headers
-    ROLE_COLORS = {
-        "Data Scientist": "#22c55e",              # green
-        "Data Analyst": "#ef4444",                # red
-        "Data Scientist / Data Science Engineer II": "#eab308",  # yellow
-        "Master's in Data Science": "#38bdf8",    # sky blue
-    }
-
-    # ---- Global CSS ----
     st.markdown(
         f"""
         <style>
-        :root {{
-            --accent: {ACCENT};
-            --accent-soft: {SECONDARY};
-            --fg: {FG};
-            --bg: {BG};
-        }}
-        html, body, .main {{
-            background-color: var(--bg) !important;
-            color: var(--fg) !important;
-        }}
+        /* Base */
+        .main {{ background-color: {bg}; color: {fg}; }}
 
-        /* Section titles (bigger + orange) */
+        /* Links */
+        a, a:visited {{ color: {ORANGE}; text-decoration: none; }}
+        a:hover {{ color: {ORANGE}; text-decoration: underline; }}
+
+        /* Section headings (orange) + fade-in */
         .section-title {{
-            font-weight: 900;
-            font-size: 1.32rem; /* ~10% bump */
-            letter-spacing: .02em;
-            margin: 0 0 10px 0;
-            color: var(--accent);
-            text-transform: uppercase;
-            animation: fadeIn .6s ease-in-out both;
+            font-weight: 800; font-size: 1.32rem; letter-spacing: .02em;
+            margin: 0 0 10px 0; color: {ORANGE}; text-transform: uppercase;
+            animation: fadein 0.9s ease-in;
+        }}
+        @keyframes fadein {{
+            from {{opacity: 0; transform: translateY(8px);}}
+            to {{opacity: 1; transform: translateY(0);}}
         }}
 
-        /* Soft cards & metrics */
+        /* Metric tiles */
         .metric-box {{
-            border: 1px solid rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
             background: rgba(255,255,255,0.04);
             padding: 16px; border-radius: 16px;
+            transition: box-shadow .15s ease, transform .15s ease;
         }}
+        .metric-box:hover {{
+            box-shadow: 0 10px 24px rgba(0,0,0,.35),
+                        0 0 0 1px rgba(249,115,22,.55);
+            transform: translateY(-2px);
+        }}
+
+        /* Skill chips */
         .chip {{
             display: inline-block; padding: 6px 10px; margin: 4px 6px 0 0;
             border-radius: 999px; border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(255,255,255,0.06); font-size: 0.95rem;
+            background: rgba(255,255,255,0.06); font-size: 0.9rem;
+            transition: box-shadow .12s ease, transform .12s ease;
         }}
-        .subtle {{ opacity: 0.75; }}
-
-        /* Links */
-        a, a:visited {{ color: var(--accent); text-decoration: none; }}
-        a:hover {{ text-decoration: underline; opacity: 0.95; }}
-
-        /* Orange hover glow for interactive blocks */
-        .hover-glow:hover {{
-            box-shadow: 0 0 0 2px var(--accent) inset, 0 0 18px rgba(249,115,22,.35);
-            transition: box-shadow .18s ease-in-out, transform .18s ease-in-out;
+        .chip:hover {{
+            box-shadow: 0 0 0 1px rgba(249,115,22,.6), 0 6px 12px rgba(0,0,0,.25);
             transform: translateY(-1px);
         }}
 
-        /* --- Streamlit control accent overrides (orange everywhere) --- */
-
-        /* Tabs active underline + color */
-        div[role="tablist"] > div[aria-selected="true"] {{
-            color: var(--accent) !important;
-            border-bottom: 3px solid var(--accent) !important;
+        /* Expanders (dropdowns) — larger header font and ORANGE hover */
+        div.streamlit-expanderHeader {{
+            font-size: 1.12rem !important;
+            font-weight: 600 !important;
+            color: {fg};
+            transition: background-color .12s ease, box-shadow .12s ease;
         }}
-        div[role="tablist"] > div:hover {{
-            color: var(--accent) !important;
-        }}
-
-        /* Segmented control selected & hover */
-        button[aria-pressed="true"] {{
-            border-color: var(--accent) !important;
-            color: var(--accent) !important;
-        }}
-        button[role="tab"]:hover,
-        button[aria-pressed="true"]:hover {{
-            box-shadow: 0 0 0 1px var(--accent) inset;
+        details[open] > summary,        /* opened */
+        div.streamlit-expanderHeader:hover {{
+            background-color: rgba(249,115,22,.13) !important;
+            box-shadow: inset 0 0 0 1px rgba(249,115,22,.55);
         }}
 
-        /* Radios/checkboxes sliders and focus rings */
-        input[type="radio"]:checked + div, input[type="checkbox"]:checked + div {{
-            border-color: var(--accent) !important;
-        }}
-        *:focus-visible {{
-            outline: none !important;
-            box-shadow: 0 0 0 2px var(--accent) !important;
+        /* Buttons hover to orange outline */
+        .stButton>button:hover {{
+            box-shadow: 0 0 0 2px {ORANGE} inset !important;
         }}
 
-        /* Expanders: larger header text; we tint header in Python via style attr.
-           This rule bumps size and sets default hover to accent if not tinted. */
-        details > summary {{
-            font-size: 1.04rem;  /* larger placeholder text */
-            padding: 12px 14px;
-        }}
-        details > summary:hover {{
-            color: var(--accent);
-        }}
-        /* expander caret color on hover/open */
-        details[open] > summary svg, details > summary:hover svg {{
-            color: var(--accent) !important;
-            fill: var(--accent) !important;
-        }}
-
-        /* Buttons (e.g., link_button) hover -> orange */
-        .stButton button:hover {{
-            border-color: var(--accent) !important;
-            color: var(--accent) !important;
-        }}
-
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(4px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
+        .subtle {{ opacity: 0.75; }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -190,23 +118,22 @@ def main() -> None:
     left, right = st.columns([0.8, 0.2], gap="large")
     with left:
         st.markdown(
-            f"<h1 style='margin-bottom:0' class='hover-glow'>{data['profile']['name']}</h1>",
+            f"<h1 style='margin-bottom:0'>{data['profile'].get('name','Teja Naidu Chintha')}</h1>",
             unsafe_allow_html=True,
         )
         st.markdown(
-            f"<div class='subtle'>{data['profile']['title']} • {data['profile']['location']}</div>",
+            f"<div class='subtle'>{data['profile'].get('title','Data Scientist')} • {data['profile'].get('location','Plano, TX')}</div>",
             unsafe_allow_html=True,
         )
 
-        # Energetic, business, elegant summary (override JSON)
-        summary = (
-            "I build decision-grade ML systems that **ship**. From fraud defenses that recover revenue "
-            "to forecasting pipelines that steer multi-million-dollar plans, my work turns noisy data into "
-            "live, reliable products. I move fast—with discipline—across Python, Spark, Databricks, "
-            "and Airflow, wrapping it all in clean MLOps so models stay accurate in production. "
-            "Finance & healthcare are my home turf; experimentation and measurable lift are my language."
+        # Captivating professional summary (override)
+        st.write(
+            "Dynamic Data Scientist with 4+ years of experience turning complex data into clear, "
+            "strategic insights. Proven success in **fraud detection, forecasting, GenAI, and scalable "
+            "**MLOps pipelines** that power decisions in **finance and healthcare**. Skilled in Spark, "
+            "Databricks, Airflow, and real-time streaming systems — I design solutions that don’t just "
+            "predict outcomes, but reshape how teams act on them."
         )
-        st.write(summary)
 
     with right:
         st.markdown("### 📇 Contact")
@@ -225,36 +152,41 @@ def main() -> None:
 
     st.divider()
 
-    # ---- KPIs (Highlights) ----
+    # ---- Highlights / KPIs ----
     st.markdown("<div class='section-title'>Highlights</div>", unsafe_allow_html=True)
-    if data.get("kpis"):
-        kpi_cols = st.columns(len(data["kpis"]))
-        for col, k in zip(kpi_cols, data["kpis"]):
-            with col:
-                st.markdown(
-                    f"<div class='metric-box hover-glow'><div class='subtle'>{k['label']}</div>"
-                    f"<h2 style='margin:0'>{k['value']}</h2></div>",
-                    unsafe_allow_html=True,
-                )
-    else:
-        st.caption("No KPIs defined yet.")
+    kpis = [
+        {"label": "Experience", "value": "4 yrs"},
+        {"label": "Domains", "value": "Finance, Healthcare"},
+        {"label": "Models Deployed", "value": "Fraud, Forecasting, GenAI, NLP"},
+        {"label": "Strengths", "value": "Spark • Databricks • MLOps • Streaming"},
+    ]
+    kpi_cols = st.columns(len(kpis))
+    for col, k in zip(kpi_cols, kpis):
+        with col:
+            st.markdown(
+                f"<div class='metric-box'><div class='subtle'>{k['label']}</div>"
+                f"<h2 style='margin:0'>{k['value']}</h2></div>",
+                unsafe_allow_html=True,
+            )
 
     st.divider()
 
     # ---- Skills ----
     st.markdown("<div class='section-title'>Skills Matrix</div>", unsafe_allow_html=True)
-
     OPTIONS = [
-        "All", "Languages", "ML & AI", "LLM & GenAI",
-        "Vector & Retrieval", "Data Processing", "Cloud & MLOps", "Viz & Communication"
+        "All",
+        "Languages",
+        "ML & AI",
+        "LLM & GenAI",
+        "Vector & Retrieval",
+        "Data Processing",
+        "Cloud & MLOps",
+        "Viz & Communication",
     ]
-
-    # segmented control fallback
     try:
         view = st.segmented_control("View", options=OPTIONS)
     except AttributeError:
         view = st.radio("View", OPTIONS, horizontal=True)
-
     view = view or "All"
 
     def chip_line(items):
@@ -267,193 +199,127 @@ def main() -> None:
         else:
             st.markdown(chip_line(data["skills"].get(view, [])), unsafe_allow_html=True)
 
-        # Skills frequency bar
-        skill_counts = [{"Category": k, "Count": len(v)} for k, v in data["skills"].items()]
-        if skill_counts:
-            df_skills = pd.DataFrame(skill_counts).sort_values("Count", ascending=True)
-            fig_skills = px.bar(
-                df_skills, x="Count", y="Category", orientation="h",
-                title="Skill Coverage by Category", color_discrete_sequence=[ACCENT]
-            )
-            fig_skills.update_layout(
-                plot_bgcolor=BG, paper_bgcolor=BG, font_color=FG,
-                hoverlabel=dict(bgcolor=ACCENT)
-            )
-            st.plotly_chart(fig_skills, use_container_width=True)
-    else:
-        st.caption("No skills defined yet.")
-
     st.divider()
 
     # ---- Experience Timeline ----
     st.markdown("<div class='section-title'>Experience Timeline</div>", unsafe_allow_html=True)
 
-    def color_for_role(role: str) -> str:
-        if not role:
-            return ACCENT
-        # try exact match, else find by startswith for safety
-        for key, val in ROLE_COLORS.items():
-            if role.strip().lower().startswith(key.lower()):
-                return val
-        return ACCENT
+    exp_data = list(data.get("experience", []))  # copy
+    # Add your Master's band on the timeline
+    exp_data.append(
+        {
+            "company": "Indiana University",
+            "role": "Master's in Data Science",
+            "start": "2022-08-01",
+            "end": "2024-05-01",
+            "location": "Bloomington, IN",
+            "bullets": [],
+        }
+    )
 
-    rows = []
-    for e in data.get("experience", []):
-        rows.append(
-            {
-                "Company": e.get("company", ""),
-                "Role": e.get("role", ""),
-                "Start": pd.to_datetime(e.get("start")),
-                "End": pd.to_datetime(e.get("end")),
-                "Location": e.get("location", ""),
-                "Bullets": " • ".join(e.get("bullets", [])[:3]) +
-                           (" ..." if len(e.get("bullets", [])) > 3 else ""),
-                "Color": color_for_role(e.get("role", "")),
-            }
+    if exp_data:
+        df_exp = pd.DataFrame(
+            [
+                {
+                    "Company": e.get("company", ""),
+                    "Role": e.get("role", ""),
+                    "Start": pd.to_datetime(e.get("start")),
+                    "End": pd.to_datetime(e.get("end")),
+                    "Location": e.get("location", ""),
+                    "Bullets": " • ".join(e.get("bullets", [])[:3]),
+                }
+                for e in exp_data
+            ]
         )
 
-    # Add Master's band (Aug 2022 – May 2024)
-    rows.append({
-        "Company": "Indiana University",
-        "Role": "Master's in Data Science",
-        "Start": pd.to_datetime("2022-08-01"),
-        "End": pd.to_datetime("2024-05-31"),
-        "Location": "Bloomington, IN",
-        "Bullets": "",
-        "Color": ROLE_COLORS["Master's in Data Science"],
-    })
+        # Fixed role → color assignment for the bars
+        color_map = {
+            "Data Scientist": "red",
+            "Data Scientist / Data Science Engineer II": "yellow",
+            "Data Analyst": "green",
+            "Master's in Data Science": "skyblue",
+        }
 
-    if rows:
-        df_exp = pd.DataFrame(rows).sort_values("Start")
         fig_timeline = px.timeline(
-            df_exp,
-            x_start="Start", x_end="End", y="Company", color="Role",
-            hover_data=["Location", "Bullets"], color_discrete_map={
-                r: c for r, c in ROLE_COLORS.items()
-            }
+            df_exp.sort_values("Start"),
+            x_start="Start",
+            x_end="End",
+            y="Company",
+            color="Role",
+            color_discrete_map=color_map,
+            hover_data=["Location", "Bullets"],
+            title="Roles over Time",
         )
-        # y reversed for Gantt feel
         fig_timeline.update_yaxes(autorange="reversed")
-        # Dark theme + orange hover
-        fig_timeline.update_layout(
-            plot_bgcolor=BG, paper_bgcolor=BG, font_color=FG,
-            hoverlabel=dict(bgcolor=ACCENT)
-        )
         st.plotly_chart(fig_timeline, use_container_width=True)
 
-        # Expandable details with header tinted to role color (header only)
-        for e in rows:
-            role = e["Role"]
-            hdr_color = e["Color"]
-            header_style = (
-                f"background: rgba(255,255,255,0.04); "
-                f"border: 1px solid rgba(255,255,255,0.08); "
-                f"border-left: 5px solid {hdr_color}; "
-                f"border-radius: 10px; margin-bottom: 10px;"
-            )
-            label = f"{role} — {e['Company']} ({e['Location']})"
-            with st.expander(f":orange[{label}]", expanded=False):
-                # inject header background via small HTML (header only look)
-                st.markdown(f"<div style='{header_style}'></div>", unsafe_allow_html=True)
-                if e["Bullets"]:
-                    for b in e["Bullets"].split(" • "):
-                        st.markdown(f"- {b}")
-                else:
-                    st.markdown("_No additional notes for this entry._")
+        for e in exp_data:
+            with st.expander(f"{e.get('role')} — {e.get('company')} ({e.get('location')})"):
+                for b in e.get("bullets", []):
+                    st.markdown(f"- {b}")
     else:
         st.caption("No experience entries yet.")
 
     st.divider()
 
-    # ---- Projects & Publications (tabs) ----
+    # ---- Projects & Publications (RESTORED) ----
     st.markdown("<div class='section-title'>Projects & Publications</div>", unsafe_allow_html=True)
     if data.get("projects"):
-        proj_tabs = st.tabs([p.get("name", f"Project {i+1}") for i, p in enumerate(data["projects"])])
-        for tab, p in zip(proj_tabs, data["projects"]):
+        tabs = st.tabs([p.get("name", f"Project {i+1}") for i, p in enumerate(data["projects"])])
+        for tab, p in zip(tabs, data["projects"]):
             with tab:
-                st.markdown("#### Highlights")
-                for h in p.get("highlights", []):
-                    st.markdown(f"- {h}")
+                if p.get("highlights"):
+                    st.markdown("#### Highlights")
+                    for h in p["highlights"]:
+                        st.markdown(f"- {h}")
                 if p.get("link"):
                     st.link_button("Open Link", p["link"], use_container_width=True)
     else:
         st.caption("No projects listed yet.")
 
-    # ---- Demo plot (synthetic) ----
+    # ---- Demo plot (forced colors: Red & Blue) ----
     st.markdown("##### Demo: Fraud Model Uplift (Synthetic)")
     np.random.seed(7)
-    roc_baseline = np.clip(np.linspace(0.5, 0.8, 50) + np.random.normal(0, .015, 50), 0, 1)
-    roc_new = np.clip(np.linspace(0.85, 0.99, 50) + np.random.normal(0, .01, 50), 0, 1)
-    df_demo = pd.DataFrame({
-        "Threshold": np.linspace(0, 1, 50),
-        "Baseline ROC-AUC (~0.61→0.82)": roc_baseline,
-        "New Model ROC-AUC (~0.92→0.99)": roc_new
-    })
-    # enforce red + blue series as requested; hover bubble orange
-    fig_demo = px.line(
-        df_demo, x="Threshold", y=df_demo.columns[1:],
-        title="ROC-AUC Trend (Illustrative)",
-        color_discrete_sequence=["#ef4444", "#3b82f6"]  # red, blue
+    roc_baseline = np.clip(np.linspace(0.5, 0.8, 50) + np.random.normal(0, 0.015, 50), 0, 1)
+    roc_new = np.clip(np.linspace(0.85, 0.99, 50) + np.random.normal(0, 0.01, 50), 0, 1)
+    df_demo = pd.DataFrame(
+        {
+            "Threshold": np.linspace(0, 1, 50),
+            "Baseline ROC-AUC (~0.61→0.82)": roc_baseline,
+            "New Model ROC-AUC (~0.92→0.99)": roc_new,
+        }
     )
-    fig_demo.update_layout(
-        plot_bgcolor=BG, paper_bgcolor=BG, font_color=FG,
-        hoverlabel=dict(bgcolor=ACCENT)
+    fig_demo = px.line(
+        df_demo,
+        x="Threshold",
+        y=df_demo.columns[1:],
+        title="ROC-AUC Trend (Illustrative)",
+        color_discrete_sequence=["red", "blue"],  # requested palette
     )
     st.plotly_chart(fig_demo, use_container_width=True)
 
     st.divider()
 
-    # ---- Education & Certifications ----
-    colA, colB = st.columns(2)
-    with colA:
-        st.markdown("<div class='section-title'>Education</div>", unsafe_allow_html=True)
-        for ed in data.get("education", []):
-            try:
-                date = pd.to_datetime(ed.get("grad_date")).strftime("%b %Y")
-            except Exception:
-                date = ed.get("grad_date", "")
-            st.markdown(
-                f"**{ed.get('degree','')}**, {ed.get('school','')}  \n"
-                f"*{ed.get('location','')}* — {date}"
-            )
-
-    with colB:
-        st.markdown("<div class='section-title'>Certifications</div>", unsafe_allow_html=True)
-        for c in data.get("certifications", []):
-            st.markdown(f"- **{c.get('name','')}** ({c.get('year','')})")
-
-    st.divider()
-
     # ---- Extras ----
     st.markdown("<div class='section-title'>Extras</div>", unsafe_allow_html=True)
-    left, right = st.columns([0.62, 0.38])
-    with left:
+    colA, colB = st.columns([0.6, 0.4])
+    with colA:
         st.markdown("**Pitch**")
         st.write(
-            "Give me noisy logs, messy telemetry, or a warehouse that hasn’t been touched in months—"
-            "I’ll ship a pipeline that your business can *bet on*. My edge: battle-tested MLOps, "
-            "streaming when it matters, and an obsession with measurable lift. If you need fraud caught sooner, "
-            "forecasts that hold up in production, or GenAI that actually improves workflow speed, "
-            "I’m the person you want in the room."
+            "I don’t just analyze data — I turn it into an **engine for decision-making**. "
+            "From fraud models that save millions, to forecasting systems that guide investment, "
+            "to MLOps pipelines that scale reliably, I thrive at the intersection of AI and impact. "
+            "Every dataset tells a story — I make sure it’s one executives can act on."
         )
-
-    with right:
+    with colB:
         st.markdown("**Download Pack**")
-        resume_path = Path(__file__).parent / "Teja_p.pdf"
-        if resume_path.exists():
-            st.download_button(
-                "Download Teja_Resume.pdf",
-                data=resume_path.read_bytes(),
-                file_name="Teja_Resume.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        else:
-            st.caption("Resume file not found yet (upload Teja_p.pdf to the repo root).")
+        try:
+            with open("Teja_p.pdf", "rb") as f:
+                st.download_button("📄 Download Teja_Resume.pdf", f, file_name="Teja_Resume.pdf")
+        except FileNotFoundError:
+            st.info("Resume file `Teja_p.pdf` not found in the repo root yet.")
 
-    st.caption("Built with Streamlit • Dark mode only • Orange accent everywhere • Deployed on Streamlit Community Cloud")
+    st.caption("Built with Streamlit • Fully Dark Mode • Orange hover accents • Shareable")
 
-
-# -------------------- Only run UI when executed directly --------------------
 if __name__ == "__main__":
     main()
