@@ -117,7 +117,7 @@ def main() -> None:
 
         /* Links */
         a, a:visited {{ color: var(--accent); text-decoration: none; }}
-        a:hover {{ color: orange; text-decoration: underline; opacity: 0.95; }}
+        a:hover {{ color: var(--accent); text-decoration: underline; opacity: 0.95; }}
 
         /* Orange hover glow for interactive blocks */
         .hover-glow:hover {{
