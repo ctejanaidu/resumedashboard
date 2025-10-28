@@ -140,10 +140,12 @@ def main() -> None:
             border-radius: 18px;
             transition: box-shadow .25s ease, transform .25s ease;
         }}
-        .soft-card:hover {{
-            box-shadow: 0 10px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(245,158,11,.28);
+        /* Fancy card hover glow */
+        .soft-card:hover {
+            box-shadow: 0 10px 24px rgba(0,0,0,.35), 
+                        0 0 0 1px rgba(245,158,11,.45);  /* orange glow */
             transform: translateY(-2px);
-        }}
+        }
 
         /* Custom details/summary (our colored expanders) */
         details.custom-expander {{
